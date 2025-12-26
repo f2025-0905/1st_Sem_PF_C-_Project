@@ -1,5 +1,8 @@
 #include <iostream>
 #include <vector>
+#include <cstdlib>
+#include <limits>
+
 using namespace std;
 
 int rows, columns, rowIn, columnIn, totalAmount = 0;
@@ -19,6 +22,7 @@ void emptySeats(int r, int c, vector<vector<char>>& reserveSeats){
     }
 }
 void displaySeats(int r, int c, int freeSeat, int reservedSeat, vector<vector<char>>& reserveSeats){
+    
     for (int i = 0; i < r; i++){
         for (int j = 0; j < c; j++){
             cout << "(" << i << "-" << j << " " << reserveSeats [i][j] <<")  ";
@@ -53,7 +57,7 @@ int seatPrice(int rowIn){
 struct bookData{
     string userName;
     string gender;
-    int cnic;
+    long long cnic;
     int ticketPrice;
 };
 
@@ -77,7 +81,9 @@ void reserveFunction(int r, int c, vector<vector<char>>& reserveSeats, vector<ve
                 continue;
             }
         cout << "Enter Your Name: ";
-        cin >> seatData [rowIn][columnIn].userName;
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        getline(cin, seatData[rowIn][columnIn].userName);
+
         cout << "Gender: ";
         cin >> seatData [rowIn][columnIn].gender;
         cout << "Enter CNIC Number: ";
@@ -114,7 +120,7 @@ void freeFunction(int r, int c, vector<vector<char>>& reserveSeats){
 }
 
 void showSeatInfo (vector<vector<bookData>>& seatData,vector<vector<char>>& reserveSeats){
-    cout << "Enter row and column to free seat: ";
+    cout << "Enter row and column to show seat info: ";
     cin >> rowIn >> columnIn;
         
         if (rowIn >= rows || columnIn >= columns) {
@@ -138,30 +144,16 @@ void cinemaMenu(){
     vector<vector<char>> reserveSeats (rows, vector<char>(columns));
     vector<vector<bookData>> seatData(rows, vector<bookData>(columns));
     
-    
-    // Get all seats empty
     emptySeats(rows, columns, reserveSeats);
-    
-    // Display Seats Plan
-    displaySeats(rows, columns, freeSeats, reservedSeats, reserveSeats);
-    cout << "\n";
-    priceList();
-    cout << "\n";
-    // Enter seats to reserve and show amounts
+
     int userAmount = 0;
-    
-        reserveFunction(rows, columns, reserveSeats, seatData);
-        reservedSeats++;
-        freeSeats--;
-        userAmount += seatPrice(rowIn);
-        totalAmount += seatPrice(rowIn);
-        displaySeats(rows, columns, freeSeats, reservedSeats, reserveSeats);
-        cout << "\n";
-        cout <<"Your Total bill = " << userAmount << endl;
     
     
     bool runLoop = true;
     do{
+        system("cls");
+        displaySeats(rows, columns, freeSeats, reservedSeats, reserveSeats);
+        cout << "\n";
        int option;
       
        cout << "\n";
@@ -176,38 +168,45 @@ void cinemaMenu(){
        cout << "\n";
        
         switch (option){
-            case 1:priceList();
+            case 1: priceList();
                     userAmount = 0;
                     reserveFunction(rows, columns, reserveSeats, seatData);
                     reservedSeats++;
                     freeSeats--;
                     userAmount += seatPrice(rowIn);
                     totalAmount += seatPrice(rowIn);
-                    displaySeats(rows, columns, freeSeats, reservedSeats, reserveSeats);
                     cout << "\n";
                     cout <<"Your Total bill = " << userAmount << endl;
             break;
-            case 2: freeFunction(rows, columns, reserveSeats);
-                    reservedSeats--;
-                    freeSeats++;
-                    displaySeats(rows, columns, freeSeats, reservedSeats, reserveSeats);
-                    totalAmount -= seatPrice(rowIn);
+            case 2: if (reservedSeats == 0){
+                       cout << "All seats are already free";
+                    } else {
+                       freeFunction(rows, columns, reserveSeats);
+                       reservedSeats--;
+                       freeSeats++;
+                       totalAmount -= seatPrice(rowIn);
+                       seatData[rowIn][columnIn] = bookData{};
+                    }
             break;
             case 3: cout << "Total sold out amount= " << totalAmount << endl;
             break;
-            case 4: showSeatInfo(seatData, reserveSeats);
+            case 4: if (reservedSeats == 0){
+                       cout << "No reserved seat. All seats are free!";
+                    } else {
+                    showSeatInfo(seatData, reserveSeats);
+                    }
             break;
             case 0: runLoop = false;
             break;
             default: cout << "Invalid Option\n";
             break;
         }
+        system("pause"); 
     }while (runLoop);
 }
     
 int main() {
     cinemaMenu();
-    
     
     return 0;
 }
