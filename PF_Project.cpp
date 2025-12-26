@@ -208,5 +208,6 @@ void cinemaMenu(){
 int main() {
     cinemaMenu();
     
+    
     return 0;
 }
