@@ -5,7 +5,6 @@
 
 using namespace std;
 
-// GLOBAL VARIABLES
 int rows, columns, rowIn, columnIn, totalAmount = 0;
 
 void cinemaSize(int& rows, int& columns){
@@ -30,12 +29,6 @@ void displaySeats(int r, int c, vector<vector<char>>& reserveSeats){
     }
 }
 
-void priceList(){
-    cout << "Front 2 rows = 1000\n";
-    cout << "Middle 3 rows = 600\n";
-    cout << "Last rows = 350\n";
-}
-
 int seatPrice(int rowIn){
     if(rowIn <= 1) return 1000;
     else if(rowIn <= 4) return 600;
@@ -45,13 +38,40 @@ int seatPrice(int rowIn){
 struct bookData{
     string userName;
     string gender;
-    long long cnic;
-    int ticketPrice;
+    long long cnic = 0;
+    int ticketPrice = 0;
 };
 
-void reserveFunction(int r,int c,vector<vector<char>>& reserveSeats,vector<vector<bookData>>& seatData){
+void reserveFunction(
+    int r, int c,
+    vector<vector<char>>& reserveSeats,
+    vector<vector<bookData>>& seatData,
+    vector<vector<vector<bookData>>>& allSeatData
+){
+
     cout << "Enter row and column: ";
     cin >> rowIn >> columnIn;
+
+    long long inputCnic;
+    cout << "Enter CNIC: ";
+    cin >> inputCnic;
+
+    bool found = false;
+    string foundName, foundGender;
+
+    // Search CNIC in all movies
+    for(int m=0; m<allSeatData.size(); m++){
+        for(int i=0;i<allSeatData[m].size();i++){
+            for(int j=0;j<allSeatData[m][i].size();j++){
+                if(allSeatData[m][i][j].cnic == inputCnic){
+                    foundName = allSeatData[m][i][j].userName;
+                    foundGender = allSeatData[m][i][j].gender;
+                    found = true;
+                }
+            }
+        }
+    }
+
 
     while(true){
         if(rowIn >= r || columnIn >= c){
@@ -64,24 +84,34 @@ void reserveFunction(int r,int c,vector<vector<char>>& reserveSeats,vector<vecto
             cin >> rowIn >> columnIn;
             continue;
         }
+        break;
+    }
 
+    seatData[rowIn][columnIn].cnic = inputCnic;
+
+    if(found){
+        seatData[rowIn][columnIn].userName = foundName;
+        seatData[rowIn][columnIn].gender = foundGender;
+        cout << "Existing user found. Data auto-filled.\n";
+    } else {
         cout << "Name: ";
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         getline(cin, seatData[rowIn][columnIn].userName);
 
         cout << "Gender: ";
         cin >> seatData[rowIn][columnIn].gender;
-
-        cout << "CNIC: ";
-        cin >> seatData[rowIn][columnIn].cnic;
-
-        seatData[rowIn][columnIn].ticketPrice = seatPrice(rowIn);
-        reserveSeats[rowIn][columnIn] = 'R';
-        break;
     }
+
+    seatData[rowIn][columnIn].ticketPrice = seatPrice(rowIn);
+    reserveSeats[rowIn][columnIn] = 'R';
 }
 
-void freeFunction(int r,int c,vector<vector<char>>& reserveSeats){
+void freeFunction(
+    int r,int c,
+    vector<vector<char>>& reserveSeats,
+    vector<vector<bookData>>& seatData,
+    int& movieRevenueSingle
+){
     cout << "Enter row and column: ";
     cin >> rowIn >> columnIn;
 
@@ -98,8 +128,18 @@ void freeFunction(int r,int c,vector<vector<char>>& reserveSeats){
         }
         break;
     }
+
+    int price = seatData[rowIn][columnIn].ticketPrice;
+
     reserveSeats[rowIn][columnIn] = 'F';
+    seatData[rowIn][columnIn] = bookData(); // DELETE USER DATA
+
+    movieRevenueSingle -= price;
+    totalAmount -= price;
+
+    cout << "Seat freed successfully.\n";
 }
+
 
 void showSeatInfo(vector<vector<bookData>>& seatData, vector<vector<char>>& reserveSeats){
     cout << "Enter row and column: ";
@@ -115,6 +155,69 @@ void showSeatInfo(vector<vector<bookData>>& seatData, vector<vector<char>>& rese
     }
 }
 
+
+bool freeSeatByCNIC(
+    vector<vector<vector<char>>>& movieSeats,
+    vector<vector<vector<bookData>>>& movieSeatData,
+    vector<int>& movieRevenue,
+    vector<string>& movieNames
+    ){
+    long long inputCnic;
+    cout << "Enter CNIC: ";
+    cin >> inputCnic;
+
+    // Store found seats
+    vector<int> foundMovie, foundRow, foundCol;
+
+    for(int m = 0; m < movieSeatData.size(); m++){
+        for(int i = 0; i < movieSeatData[m].size(); i++){
+            for(int j = 0; j < movieSeatData[m][i].size(); j++){
+                if(movieSeatData[m][i][j].cnic == inputCnic &&
+                   movieSeats[m][i][j] == 'R'){
+                    foundMovie.push_back(m);
+                    foundRow.push_back(i);
+                    foundCol.push_back(j);
+                }
+            }
+        }
+    }
+
+    if(foundMovie.size() == 0){
+        cout << "CNIC not found. Seat not freed.\n";
+        return false;
+    }
+
+    int select = 0;
+    if(foundMovie.size() > 1){
+        cout << "\nMultiple seats found:\n";
+        for(int k = 0; k < foundMovie.size(); k++){
+            cout << k+1 << ". Movie: " << movieNames[foundMovie[k]]
+                 << " Seat (" << foundRow[k]
+                 << "," << foundCol[k] << ")\n";
+        }
+        cout << "Select seat to free: ";
+        cin >> select;
+        select--;
+    }
+
+    int m = foundMovie[select];
+    int r = foundRow[select];
+    int c = foundCol[select];
+
+    int price = movieSeatData[m][r][c].ticketPrice;
+
+    movieSeats[m][r][c] = 'F';
+    movieSeatData[m][r][c] = bookData(); // CLEAR DATA
+
+    movieRevenue[m] -= price;
+    totalAmount -= price;
+
+    cout << "Seat freed successfully.\n";
+    return true;
+}
+
+
+
 int main(){
 
     vector<string> movieNames;
@@ -123,18 +226,15 @@ int main(){
     vector<vector<vector<char>>> movieSeats;
     vector<vector<vector<bookData>>> movieSeatData;
 
-    bool runProgram = true;
-
-    while(runProgram){
+    while(true){
         system("cls");
-
         int role;
         cout << "1. Owner\n2. User\n0. Exit\nEnter: ";
         cin >> role;
 
         if(role == 0) break;
 
-        /* ================= OWNER ================= */
+        // OWNER
         if(role == 1){
             string user, pass;
             cout << "Username(default: shafqat): ";
@@ -148,18 +248,18 @@ int main(){
                 continue;
             }
 
-            bool ownerMenu = true;
-            while(ownerMenu){
+            while(true){
                 system("cls");
                 cout << "\nOWNER MENU\n";
                 cout << "1. Add Movie\n";
                 cout << "2. Manage Movie\n";
                 cout << "3. Show Total Revenue\n";
-                cout << "0. Back to Main Menu\n";
+                cout << "4. Search Person by CNIC\n";
+                cout << "0. Back\n";
                 cout << "Enter: ";
+
                 int op;
                 cin >> op;
-
                 if(op == 0) break;
 
                 if(op == 1){
@@ -184,13 +284,12 @@ int main(){
                 }
 
                 else if(op == 2){
-                    if(movieNames.size() == 0){
+                    if(movieNames.empty()){
                         cout << "There is no movie currently available\n";
                         system("pause");
                         continue;
                     }
 
-                    cout << "Movies:\n";
                     for(int i=0;i<movieNames.size();i++)
                         cout << i+1 << ". " << movieNames[i] << endl;
 
@@ -204,64 +303,81 @@ int main(){
 
                     displaySeats(rows, columns, movieSeats[choice]);
 
-                    cout << "1. Reserve Seat\n";
-                    cout << "2. Free Seat\n";
-                    cout << "3. Show Seat Info\n";
-                    cout << "4. Show Movie Revenue\n";
-                    cout << "0. Back\n";
-                    cout << "Enter: ";
-
+                    cout << "1. Reserve Seat\n2. Free Seat\n3. Show Seat Info\n4. Show Movie Revenue\n0. Back\nEnter: ";
                     int ch;
                     cin >> ch;
 
                     if(ch == 1){
-                        reserveFunction(rows, columns, movieSeats[choice], movieSeatData[choice]);
-                        int price = seatPrice(rowIn);
-                        totalAmount += price;
-                        movieRevenue[choice] += price;
+                        reserveFunction(rows, columns, movieSeats[choice], movieSeatData[choice], movieSeatData);
+                        int p = seatPrice(rowIn);
+                        totalAmount += p;
+                        movieRevenue[choice] += p;
                     }
                     else if(ch == 2){
-                        freeFunction(rows, columns, movieSeats[choice]);
-                        int price = seatPrice(rowIn);
-                        totalAmount -= price;
-                        movieRevenue[choice] -= price;
+                        freeFunction(
+                        rows,
+                        columns,
+                        movieSeats[choice],
+                        movieSeatData[choice],
+                        movieRevenue[choice]
+                        );
                     }
                     else if(ch == 3){
                         showSeatInfo(movieSeatData[choice], movieSeats[choice]);
                     }
                     else if(ch == 4){
-                        cout << "Revenue of this movie = " << movieRevenue[choice] << endl;
+                        cout << "Movie Revenue = " << movieRevenue[choice] << endl;
                     }
                     system("pause");
                 }
 
                 else if(op == 3){
-                    cout << "Total Revenue from all movies = " << totalAmount << endl;
+                    cout << "Total Revenue = " << totalAmount << endl;
+                    system("pause");
+                }
+
+                else if(op == 4){
+                    long long c;
+                    cout << "Enter CNIC: ";
+                    cin >> c;
+                    bool found = false;
+
+                    for(int m=0;m<movieSeatData.size();m++){
+                        for(int i=0;i<movieSeatData[m].size();i++){
+                            for(int j=0;j<movieSeatData[m][i].size();j++){
+                                if(movieSeatData[m][i][j].cnic == c){
+                                    cout << "\nMovie: " << movieNames[m];
+                                    cout << "\nSeat: (" << i << "," << j << ")";
+                                    cout << "\nName: " << movieSeatData[m][i][j].userName;
+                                    cout << "\nGender: " << movieSeatData[m][i][j].gender;
+                                    cout << "\nPrice: " << movieSeatData[m][i][j].ticketPrice << endl;
+                                    found = true;
+                                }
+                            }
+                        }
+                    }
+                    if(!found) cout << "No record found\n";
                     system("pause");
                 }
             }
         }
 
-        /* ================= USER ================= */
+        // USER
         else if(role == 2){
-            if(movieNames.size() == 0){
+            if(movieNames.empty()){
                 cout << "There is no movie currently available\n";
                 system("pause");
                 continue;
             }
 
-            bool userMenu = true;
-            while(userMenu){
+            while(true){
                 system("cls");
-                cout << "\nMovies:\n";
                 for(int i=0;i<movieNames.size();i++)
                     cout << i+1 << ". " << movieNames[i] << endl;
-                cout << "0. Back to Main Menu\n";
+                cout << "0. Back\nEnter: ";
 
                 int choice;
-                cout << "Select movie: ";
                 cin >> choice;
-
                 if(choice == 0) break;
                 choice--;
 
@@ -275,17 +391,16 @@ int main(){
                 cin >> op;
 
                 if(op == 1){
-                    reserveFunction(rows, columns, movieSeats[choice], movieSeatData[choice]);
-                    cout << "Your bill = " << seatPrice(rowIn) << endl;
-                    totalAmount += seatPrice(rowIn);
-                    movieRevenue[choice] += seatPrice(rowIn);
+                    reserveFunction(rows, columns, movieSeats[choice], movieSeatData[choice], movieSeatData);
+                    int p = seatPrice(rowIn);
+                    cout << "Your bill = " << p << endl;
+                    totalAmount += p;
+                    movieRevenue[choice] += p;
                 }
                 else if(op == 2){
-                    freeFunction(rows, columns, movieSeats[choice]);
-                    totalAmount -= seatPrice(rowIn);
-                    movieRevenue[choice] -= seatPrice(rowIn);
-                }
+                    freeSeatByCNIC(movieSeats, movieSeatData, movieRevenue, movieNames);
                 system("pause");
+                }
             }
         }
     }
