@@ -2,6 +2,9 @@
 #include <vector>
 #include <cstdlib>
 #include <limits>
+#include <string>
+#include <fstream>
+#include "cinema.h"
 
 using namespace std;
 
@@ -29,18 +32,115 @@ void displaySeats(int r, int c, vector<vector<char>>& reserveSeats){
     }
 }
 
-int seatPrice(int rowIn){
-    if(rowIn <= 1) return 1000;
-    else if(rowIn <= 4) return 600;
-    else return 350;
-}
-
 struct bookData{
     string userName;
     string gender;
     long long cnic = 0;
     int ticketPrice = 0;
 };
+
+// File handeling 
+
+
+void saveToFile(
+    vector<string>& movieNames,
+    vector<int>& movieRows,
+    vector<int>& movieCols,
+    vector<int>& movieRevenue,
+    vector<vector<vector<char>>>& movieSeats,
+    vector<vector<vector<bookData>>>& movieSeatData,
+    int totalAmount
+){
+    ofstream file("cinema_data.txt");
+
+    file << movieNames.size() << endl;
+    file << totalAmount << endl;
+
+    for(int m = 0; m < movieNames.size(); m++){
+        file << movieNames[m] << endl;
+        file << movieRows[m] << " " << movieCols[m] << endl;
+        file << movieRevenue[m] << endl;
+
+        for(int i = 0; i < movieRows[m]; i++){
+            for(int j = 0; j < movieCols[m]; j++){
+                file << movieSeats[m][i][j] << " ";
+            }
+            file << endl;
+        }
+
+        for(int i = 0; i < movieRows[m]; i++){
+            for(int j = 0; j < movieCols[m]; j++){
+                file << movieSeatData[m][i][j].userName << endl;
+                file << movieSeatData[m][i][j].gender << endl;
+                file << movieSeatData[m][i][j].cnic << endl;
+                file << movieSeatData[m][i][j].ticketPrice << endl;
+            }
+        }
+    }
+    file.close();
+}
+
+void loadFromFile(
+    vector<string>& movieNames,
+    vector<int>& movieRows,
+    vector<int>& movieCols,
+    vector<int>& movieRevenue,
+    vector<vector<vector<char>>>& movieSeats,
+    vector<vector<vector<bookData>>>& movieSeatData,
+    int& totalAmount
+){
+    ifstream file("cinema_data.txt");
+    if(!file){
+        return;
+    } 
+
+    int movieCount;
+    file >> movieCount;
+    file >> totalAmount;
+    file.ignore();
+
+    for(int m = 0; m < movieCount; m++){
+        string name;
+        getline(file, name);
+        movieNames.push_back(name);
+
+        int r, c;
+        file >> r >> c;
+        movieRows.push_back(r);
+        movieCols.push_back(c);
+
+        int rev;
+        file >> rev;
+        movieRevenue.push_back(rev);
+
+        vector<vector<char>> seats(r, vector<char>(c));
+        for(int i = 0; i < r; i++)
+            for(int j = 0; j < c; j++)
+                file >> seats[i][j];
+        movieSeats.push_back(seats);
+
+        vector<vector<bookData>> data(r, vector<bookData>(c));
+        file.ignore();
+        for(int i = 0; i < r; i++){
+            for(int j = 0; j < c; j++){
+                getline(file, data[i][j].userName);
+                getline(file, data[i][j].gender);
+                file >> data[i][j].cnic;
+                file >> data[i][j].ticketPrice;
+                file.ignore();
+            }
+        }
+        movieSeatData.push_back(data);
+    }
+    file.close();
+}
+
+
+int seatPrice(int rowIn){
+    if(rowIn <= 1) return 1000;
+    else if(rowIn <= 4) return 600;
+    else return 350;
+}
 
 void reserveFunction(
     int r, int c,
@@ -104,6 +204,47 @@ void reserveFunction(
 
     seatData[rowIn][columnIn].ticketPrice = seatPrice(rowIn);
     reserveSeats[rowIn][columnIn] = 'R';
+}
+
+void deleteMovie(
+    vector<string>& movieNames,
+    vector<int>& movieRows,
+    vector<int>& movieCols,
+    vector<int>& movieRevenue,
+    vector<vector<vector<char>>>& movieSeats,
+    vector<vector<vector<bookData>>>& movieSeatData,
+    int& totalAmount
+){
+    if(movieNames.empty()){
+        cout << "No movies to delete.\n";
+        return;
+    }
+
+    cout << "\nAvailable Movies:\n";
+    for(int i = 0; i < movieNames.size(); i++){
+        cout << i + 1 << ". " << movieNames[i] << endl;
+    }
+
+    int del;
+    cout << "Select movie to delete: ";
+    cin >> del;
+    del--;
+
+    if(del < 0 || del >= movieNames.size()){
+        cout << "Invalid selection.\n";
+        return;
+    }
+
+    totalAmount -= movieRevenue[del];
+
+    movieNames.erase(movieNames.begin() + del);
+    movieRows.erase(movieRows.begin() + del);
+    movieCols.erase(movieCols.begin() + del);
+    movieRevenue.erase(movieRevenue.begin() + del);
+    movieSeats.erase(movieSeats.begin() + del);
+    movieSeatData.erase(movieSeatData.begin() + del);
+
+    cout << "Movie deleted successfully.\n";
 }
 
 void freeFunction(
@@ -216,9 +357,7 @@ bool freeSeatByCNIC(
     return true;
 }
 
-
-
-int main(){
+void mainCinema(){
 
     vector<string> movieNames;
     vector<int> movieRows, movieCols;
@@ -226,14 +365,23 @@ int main(){
     vector<vector<vector<char>>> movieSeats;
     vector<vector<vector<bookData>>> movieSeatData;
 
+    loadFromFile(movieNames, movieRows, movieCols, movieRevenue, movieSeats, movieSeatData, totalAmount);
+
+
     while(true){
         system("cls");
         int role;
-        cout << "1. Owner\n2. User\n0. Exit\nEnter: ";
+        cout << "1. Owner\n";
+        cout << "2. User\n";
+        cout << "0. Exit\nEnter: ";
         cin >> role;
 
-        if(role == 0) break;
+        if(role == 0){
 
+            // Update the file before exiting
+            saveToFile(movieNames, movieRows, movieCols, movieRevenue, movieSeats, movieSeatData, totalAmount);
+            break;
+        } 
         // OWNER
         if(role == 1){
             string user, pass;
@@ -255,8 +403,10 @@ int main(){
                 cout << "2. Manage Movie\n";
                 cout << "3. Show Total Revenue\n";
                 cout << "4. Search Person by CNIC\n";
+                cout << "5. Delete Movie\n";
                 cout << "0. Back\n";
                 cout << "Enter: ";
+
 
                 int op;
                 cin >> op;
@@ -278,6 +428,9 @@ int main(){
                     movieSeats.push_back(vector<vector<char>>(rows, vector<char>(columns)));
                     movieSeatData.push_back(vector<vector<bookData>>(rows, vector<bookData>(columns)));
                     emptySeats(rows, columns, movieSeats.back());
+
+                    // Updating File..
+                    saveToFile(movieNames, movieRows, movieCols, movieRevenue, movieSeats, movieSeatData, totalAmount);
 
                     cout << "Movie added successfully\n";
                     system("pause");
@@ -312,15 +465,15 @@ int main(){
                         int p = seatPrice(rowIn);
                         totalAmount += p;
                         movieRevenue[choice] += p;
+
+                        //File updating
+                        saveToFile(movieNames, movieRows, movieCols, movieRevenue, movieSeats, movieSeatData, totalAmount);
                     }
                     else if(ch == 2){
-                        freeFunction(
-                        rows,
-                        columns,
-                        movieSeats[choice],
-                        movieSeatData[choice],
-                        movieRevenue[choice]
-                        );
+                        freeFunction(rows, columns, movieSeats[choice], movieSeatData[choice], movieRevenue[choice]);
+
+                        // Updating File...
+                        saveToFile(movieNames, movieRows, movieCols, movieRevenue, movieSeats, movieSeatData, totalAmount);
                     }
                     else if(ch == 3){
                         showSeatInfo(movieSeatData[choice], movieSeats[choice]);
@@ -328,6 +481,7 @@ int main(){
                     else if(ch == 4){
                         cout << "Movie Revenue = " << movieRevenue[choice] << endl;
                     }
+
                     system("pause");
                 }
 
@@ -359,6 +513,12 @@ int main(){
                     if(!found) cout << "No record found\n";
                     system("pause");
                 }
+                else if(op == 5){
+                        deleteMovie(movieNames, movieRows, movieCols, movieRevenue, movieSeats, movieSeatData, totalAmount);
+
+                        saveToFile(movieNames, movieRows, movieCols, movieRevenue, movieSeats, movieSeatData, totalAmount);
+                    system("pause");
+                    }
             }
         }
 
@@ -404,5 +564,4 @@ int main(){
             }
         }
     }
-    return 0;
 }
