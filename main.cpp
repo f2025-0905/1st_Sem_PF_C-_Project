@@ -3,7 +3,6 @@
 #include "airline.h"
 
 using namespace std;
-
 int main() {
     int option;
 
