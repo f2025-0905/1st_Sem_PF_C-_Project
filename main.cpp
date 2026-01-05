@@ -7,7 +7,7 @@ int main() {
     int option;
 
     do {
-        cout << "\n===== MAIN MENU =====\n";
+        cout << "\n_______ MAIN MENU _________\n";
         cout << "1. Cinema Reservation\n";
         cout << "2. Airline Reservation\n";
         cout << "0. Exit\n";
